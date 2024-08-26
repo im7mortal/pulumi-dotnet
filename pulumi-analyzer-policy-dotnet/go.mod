@@ -2,16 +2,9 @@ module github.com/pulumi/pulumi/sdk/go/pulumi-analyzer-policy-dotnet
 
 go 1.20
 
-replace (
-	github.com/pulumi/pulumi-dotnet/pulumi-analyzer-policy-dotnet => /home/user/dev/pulumi/pulumi-dotnet/pulumi-analyzer-policy-dotnet
-	github.com/pulumi/pulumi/pkg/v3 => /home/user/dev/pulumi/pulumi/pkg
-	github.com/pulumi/pulumi/sdk/v3 => /home/user/dev/pulumi/pulumi/sdk
-)
+replace github.com/pulumi/pulumi/sdk/v3 => github.com/im7mortal/pulumi/sdk/v3 v3.129000.0
 
-require (
-	github.com/pulumi/pulumi-dotnet/pulumi-analyzer-policy-dotnet v0.0.0-00010101000000-000000000000
-	github.com/pulumi/pulumi/sdk/v3 v3.129.0
-)
+require github.com/pulumi/pulumi/sdk/v3 v3.129000.0
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
