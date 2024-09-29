@@ -29,10 +29,10 @@ namespace Pulumi.Experimental.Provider
     public readonly struct ResourceReference : IEquatable<ResourceReference>
     {
         public readonly Urn URN;
-        public readonly PropertyValue Id;
+        public readonly PropertyValue? Id;
         public readonly string PackageVersion;
 
-        public ResourceReference(Urn urn, PropertyValue id, string version)
+        public ResourceReference(Urn urn, PropertyValue? id, string version)
         {
             URN = urn;
             Id = id;
@@ -55,7 +55,7 @@ namespace Pulumi.Experimental.Provider
 
         public bool Equals(ResourceReference other)
         {
-            return URN == other.URN && Id.Equals(other.Id) && PackageVersion == other.PackageVersion;
+            return URN == other.URN && Equals(Id, other.Id) && PackageVersion == other.PackageVersion;
         }
 
         public static bool operator ==(ResourceReference left, ResourceReference right)
@@ -72,9 +72,9 @@ namespace Pulumi.Experimental.Provider
     public readonly struct OutputReference : IEquatable<OutputReference>
     {
         public readonly PropertyValue? Value;
-        public readonly ImmutableArray<Urn> Dependencies;
+        public readonly ImmutableHashSet<Urn> Dependencies;
 
-        public OutputReference(PropertyValue? value, ImmutableArray<Urn> dependencies)
+        public OutputReference(PropertyValue? value, ImmutableHashSet<Urn> dependencies)
         {
             Value = value;
             Dependencies = dependencies;
@@ -96,7 +96,7 @@ namespace Pulumi.Experimental.Provider
 
         public bool Equals(OutputReference other)
         {
-            if (!Dependencies.Equals(other.Dependencies))
+            if (!Dependencies.SetEquals(other.Dependencies))
             {
                 return false;
             }
@@ -120,6 +120,11 @@ namespace Pulumi.Experimental.Provider
         public static bool operator !=(OutputReference left, OutputReference right)
         {
             return !(left == right);
+        }
+
+        public override string ToString()
+        {
+            return $"Output({Value}, {Dependencies})";
         }
     }
 
@@ -692,12 +697,13 @@ namespace Pulumi.Experimental.Provider
                                             version = "";
                                         }
 
-                                        if (!structValue.Fields.TryGetValue(Constants.IdPropertyName, out var id))
+                                        PropertyValue? idProperty = null;
+                                        if (structValue.Fields.TryGetValue(Constants.IdPropertyName, out var id))
                                         {
-                                            throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
+                                            idProperty = Unmarshal(id);
                                         }
 
-                                        return new PropertyValue(new ResourceReference(new Urn(urn), Unmarshal(id), version));
+                                        return new PropertyValue(new ResourceReference(new Urn(urn), idProperty, version));
                                     }
                                 case Constants.SpecialOutputValueSig:
                                     {
@@ -705,10 +711,6 @@ namespace Pulumi.Experimental.Provider
                                         if (structValue.Fields.TryGetValue(Constants.ValueName, out var knownElement))
                                         {
                                             element = Unmarshal(knownElement);
-                                        }
-                                        else
-                                        {
-                                            element = PropertyValue.Computed;
                                         }
                                         var secret = false;
                                         if (structValue.Fields.TryGetValue(Constants.SecretName, out var v))
@@ -723,7 +725,7 @@ namespace Pulumi.Experimental.Provider
                                             }
                                         }
 
-                                        var dependenciesBuilder = ImmutableArray.CreateBuilder<Urn>();
+                                        var dependenciesBuilder = ImmutableHashSet.CreateBuilder<Urn>();
                                         if (structValue.Fields.TryGetValue(Constants.DependenciesName, out var dependencies))
                                         {
                                             if (dependencies.KindCase == Value.KindOneofCase.ListValue)
@@ -842,7 +844,7 @@ namespace Pulumi.Experimental.Provider
                 result.Fields[Constants.ValueName] = Marshal(output.Value);
             }
 
-            var dependencies = new Value[output.Dependencies.Length];
+            var dependencies = new Value[output.Dependencies.Count];
             var i = 0;
             foreach (var dependency in output.Dependencies)
             {
@@ -898,7 +900,10 @@ namespace Pulumi.Experimental.Provider
                     var result = new Struct();
                     result.Fields[Constants.SpecialSigKey] = Value.ForString(Constants.SpecialResourceSig);
                     result.Fields[Constants.UrnPropertyName] = Value.ForString(resource.URN);
-                    result.Fields[Constants.IdPropertyName] = Marshal(resource.Id);
+                    if (resource.Id != null)
+                    {
+                        result.Fields[Constants.IdPropertyName] = Marshal(resource.Id);
+                    }
                     if (resource.PackageVersion != "")
                     {
                         result.Fields[Constants.ResourceVersionName] = Value.ForString(resource.PackageVersion);

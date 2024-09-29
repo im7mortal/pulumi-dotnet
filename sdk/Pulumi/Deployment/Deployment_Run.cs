@@ -171,7 +171,7 @@ namespace Pulumi
         /// in which case an internal TestStack is used to create the resources.
         ///
         /// This function takes the created resources from the TestStack and filters it out of the created resources
-        /// (since it is internal) and obtains the outputs returned, if any from that TestStack. 
+        /// (since it is internal) and obtains the outputs returned, if any from that TestStack.
         /// </summary>
         /// <param name="resources">The created resources from TestAsync</param>
         /// <returns>Resources and outputs</returns>
@@ -199,7 +199,7 @@ namespace Pulumi
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
         /// run the provided function that creates resources but doesn't actually deploy them
-        /// Note: Currently, unit tests that call this function 
+        /// Note: Currently, unit tests that call this function
         /// must run serially; parallel execution is not supported.
         /// </summary>
         /// <param name="testMocks">Hooks to mock the engine calls.</param>
@@ -222,7 +222,7 @@ namespace Pulumi
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
         /// run the provided function that creates resources but doesn't actually deploy them
-        /// Note: Currently, unit tests that call this function 
+        /// Note: Currently, unit tests that call this function
         /// must run serially; parallel execution is not supported.
         /// </summary>
         /// <param name="testMocks">Hooks to mock the engine calls.</param>
@@ -245,7 +245,7 @@ namespace Pulumi
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
         /// run the provided function that creates resources but doesn't actually deploy them
-        /// Note: Currently, unit tests that call this function 
+        /// Note: Currently, unit tests that call this function
         /// must run serially; parallel execution is not supported.
         /// </summary>
         /// <param name="testMocks">Hooks to mock the engine calls.</param>
@@ -268,7 +268,7 @@ namespace Pulumi
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
         /// run the provided function that creates resources but doesn't actually deploy them
-        /// Note: Currently, unit tests that call this function 
+        /// Note: Currently, unit tests that call this function
         /// must run serially; parallel execution is not supported.
         /// </summary>
         /// <param name="testMocks">Hooks to mock the engine calls.</param>
@@ -328,10 +328,19 @@ namespace Pulumi
         // in order to protect the scope of the AsyncLocal Deployment.Instance we cannot elide the task (return it early)
         // if the task is returned early and not awaited, than it is possible for any code that runs before the eventual await
         // to be executed synchronously and thus have multiple calls to one of the Run methods affecting each others Deployment.Instance
-        internal static async Task<int> CreateRunnerAndRunAsync(
+        internal static async Task<T> CreateRunnerAndRunAsync<T>(
             Func<Deployment> deploymentFactory,
-            Func<IRunner, Task<int>> runAsync)
+            Func<IRunner, Task<T>> runAsync)
         {
+            if (Environment.GetEnvironmentVariable("PULUMI_ATTACH_DEBUGGER") == "true")
+            {
+                while (!System.Diagnostics.Debugger.IsAttached)
+                {
+                    // keep waiting until the debugger is attached
+                    await Task.Delay(100).ConfigureAwait(false);
+                }
+            }
+
             var deployment = deploymentFactory();
             Instance = new DeploymentInstance(deployment);
             return await runAsync(deployment._runner).ConfigureAwait(false);
